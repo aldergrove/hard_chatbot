@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="fi">
+<head>
+    <meta charset="UTF-8">
+    <title>hard_chatbot</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 40px auto;
+            line-height: 1.4;
+        }
+        h1 { margin-bottom: 8px; }
+        #chat-container {
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            padding: 16px;
+            height: 320px;
+            overflow-y: auto;
+            margin-bottom: 12px;
+            background: #fafafa;
+        }
+        .message { margin-bottom: 8px; }
+        .user { font-weight: bold; }
+        .bot { font-weight: bold; }
+        #input-row {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+        #user-input {
+            flex: 1;
+            padding: 6px;
+        }
+        button {
+            padding: 6px 12px;
+            cursor: pointer;
+        }
+        #status {
+            font-size: 12px;
+            color: #666;
+            min-height: 1em;
+        }
+    </style>
+</head>
+<body>
+<h1>hard_chatbot</h1>
+<p>
+    Tämä versio käyttää oikeaa kielimallia (Hugging Face Inference API:n kautta)
+    taustapalvelimen avulla.
+</p>
+
+<div id="chat-container"></div>
+
+<div id="input-row">
+    <input id="user-input" type="text" placeholder="Kirjoita kysymyksesi..." />
+    <button id="send-btn">Lähetä</button>
+</div>
+
+<div id="status"></div>
+
+<script>
+    // VAIHDA TÄMÄ osoitteeseen, johon deployasit Node-backendin:
+    const API_URL = "https://OMA-BACKEND-OSOITE.example.com/api/chat";
+
+    const chatContainer = document.getElementById("chat-container");
+    const userInput = document.getElementById("user-input");
+    const sendBtn = document.getElementById("send-btn");
+    const statusEl = document.getElementById("status");
+
+    function addMessage(sender, text, senderClass) {
+        const div = document.createElement("div");
+        div.classList.add("message");
+        const labelClass = senderClass || (sender === "Sinä" ? "user" : "bot");
+        div.innerHTML = `<span class="${labelClass}">${sender}:</span> ${text}`;
+        chatContainer.appendChild(div);
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+    }
+
+    async function handleSend() {
+        const text = userInput.value.trim();
+        if (!text) return;
+
+        addMessage("Sinä", text, "user");
+        userInput.value = "";
+        userInput.focus();
+
+        statusEl.textContent = "Haetaan vastausta AI-mallilta...";
+
+        try {
+            const response = await fetch(API_URL, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ message: text })
+            });
+
+            if (!response.ok) {
+                statusEl.textContent = "Virhe palvelussa.";
+                addMessage("hard_chatbot", "Pahoittelut, palvelussa tapahtui virhe.", "bot");
+                return;
+            }
+
+            const data = await response.json();
+            const reply = data.reply || "En saanut vastausta AI-mallilta.";
+            addMessage("hard_chatbot", reply, "bot");
+            statusEl.textContent = "";
+        } catch (err) {
+            console.error("Virhe fetchissä:", err);
+            statusEl.textContent = "Verkkovirhe.";
+            addMessage("hard_chatbot", "Pahoittelut, en saanut yhteyttä palvelimeen.", "bot");
+        }
+    }
+
+    sendBtn.addEventListener("click", handleSend);
+    userInput.addEventListener("keydown", (event) => {
+        if (event.key === "Enter") {
+            handleSend();
+        }
+    });
+
+    addMessage("hard_chatbot", "Tervetuloa! Olen hard_chatbot ja käytän oikeaa AI-mallia vastatakseni kysymyksiisi.", "bot");
+</script>
+</body>
+</html>
